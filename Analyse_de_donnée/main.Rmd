@@ -1,0 +1,23 @@
+---
+title: "main.Rmd"
+output: html_document
+date: "2023-05-14"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+rm(list=ls())
+data = read.csv2("epi_r.csv", sep =",")
+data = data[c(2,3,4,5,6,7,15,39)]
+data = data[data$calories != "",]
+data = data[data$protein != "",]
+data = data[data$fat != "",]
+data = data[data$sodium != "",]
+
+data = data[c(1:5000),]
+
+```
+
