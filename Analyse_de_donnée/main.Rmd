@@ -29,7 +29,8 @@ data$alcoholic = as.factor(data$alcoholic)
 data$bake = as.factor(data$bake)
 
 #on ne garde que 500 lignes pour le moment
-data = data[c(1:5000),]
+nbRows = 5000
+data = data[c(1:nbRows),]
 
 head(data)
 
@@ -39,8 +40,10 @@ head(data)
 On fait une AFC
 ```{r}
 #stat desdcriptive
-barplot(apply(data,2,sum)/sum(data), las=3)  
-#1 faire test du khi-deux pour vérifier la liaisons des variable qualitatives
+barplot(apply(data,2,sum)/sum(data), las=3)#marche pas ptdr
+
+#1 faire test du khi-deux pour vérifier la liaisons des variables qualitatives
+chisq.test(dataAFC)
 
 ```
 
