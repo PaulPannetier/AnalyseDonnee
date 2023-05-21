@@ -1,0 +1,498 @@
+---
+title: "tp6.Rmd"
+output: html_document
+date: "2023-04-17"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+Exos 4)
+
+```{r}
+rm(list=ls())
+donnees = read.table("SAheart.data", sep = ",", header = TRUE, row.names = 1)
+donnees$chd = as.factor(donnees$chd)
+donnees
+```
+
+```{r}
+res = glm(chd ~ ., family = binomial , data=donnees)
+summary(res)
+```
+```{r}
+exp(coefficients(res))#calcule des OR
+```
+comme OR famhistPresent > 1 alors si famhistPresent augmente, alors la variables a expliqué augmente, ainsi plus on a d'antécédant familial, plus on risque de dev une maladie cardio-vasculaire.
+De plus OR de taux de cholesterol (ldl) > 1 donc meme chose.
+
+```{r}
+res0 =glm(chd ~ 1, family = "binomial", data=donnees)
+anova(res0,res,test="Chisq")
+```
+
+
+
+
+
+```{r}
+library("MASS")
+res_AIC <- step(res) #par d´efaut : direction ="backward"
+#chisq.test(res, res_AIC)
+```
+
+
+```{r}
+newDonnees = read.table("SAheart.newdata.data", sep = ",", header = TRUE, row.names = 1)
+#newDonnees$chd = as.factor(newDonnees$chd)
+```
+
+
+```{r}
+pred=predict(res_AIC, newdata=newDonnees , type="response")
+class=1*(pred>0.5)
+pred
+class
+```
+
+```{r}
+library(car)
+crPlots(res_AIC)
+```
+
+```{r}
+#colin´earit´e entre variables ?
+library(car)
+vif(res_AIC)
+```
+
+```{r}
+#graphe
+par(mfrow=c(2,2))
+plot(res_AIC)
+# attention pas de diagnostic gaussien !
+# r´esidus de Pearson trop elev´es ?
+abs(residuals(res_AIC,type="pearson"))[abs(residuals(res_AIC,type="pearson"))>2]
+
+```
+
+Ici on remarque que les points ne sont pas gaussien, de plus dans le graph des residuals Vs Leverage on remarque que le points 261 et tres haut, on devrait le virer.
+
+5)
+
+```{r}
+rm(list=ls())
+load("Desbois_complet.rda") 
+data$DIFF = as.factor(data$DIFF)
+head(data)
+#Etudier la structure de data
+summary(data)
+
+# Création d'un échantillon train et d'un échantillon test
+set.seed(1)
+n <- nrow(data)
+p <- ncol(data)-1
+test.ratio <- .2 # ratio of test/train samples
+n.test <- round(n*test.ratio)
+n.test
+tr <- sample(1:n,n.test)
+data.test <- data[tr,]
+data.train <- data[-tr,]
+```
+
+```{r}
+# LDA, QDA ----------------------------------------------------------------------------
+
+## Modèle
+
+## Prédiction
+
+## Table de confusion : utiliser la fonction table pour comparer DIFF de l'échantillon test et ce qui vous avez prédit. 
+### Accuracy : il n'y a pas de fonction prédéfinie, mais il suffit de compter le nombre de fois où on a bien prédit.
+
+## courbe ROC  ; voici le code
+#Avec le package pROC : on represente la sensibilité en fonction de la spécificité (contrairement à ce qui est défini dans le cours ou c'est sensibilité en fonction de 1- spécificité) et l'axe des abscisses est gradué de 1 à 0.
+
+library(pROC)
+res_lda = lda(DIFF~., data.train)
+#proba a posteriori de succes (dans la deuxième colonne) : 
+pred_lda <- predict(res_lda, data.test, type = "class")#$posterior[,2] 
+
+## Table confusion et accuracy :
+table(data.test$DIFF, pred_lda$class)
+accuracy_lda = mean(data.test$DIFF == pred_lda$class)
+accuracy_lda
+
+ROC_lda <- roc(data.test$DIFF,as.numeric(pred_lda$class))
+plot(ROC_lda, print.auc=TRUE,  print.auc.y = 0.5)
+ROC_lda$auc
+
+#lda V2
+
+library(klaR)
+stepwise_lda= stepclass(DIFF~., data=data.train, method="lda", direction="backward")
+stepwise_lda
+res_stepwise_lda = lda(stepwise_lda$formula, data=data.train)
+
+pred_stepwise_lda <- predict(res_lda, data.test, type = "class")#$posterior[,2] 
+
+## Table confusion et accuracy :
+table(data.test$DIFF, pred_stepwise_lda$class)
+accuracy_stepwise_lda = mean(data.test$DIFF == pred_stepwise_lda$class)
+accuracy_stepwise_lda
+
+ROC_stepwise_lda <- roc(data.test$DIFF,as.numeric(pred_stepwise_lda$class))
+plot(ROC_stepwise_lda, print.auc=TRUE,  print.auc.y = 0.5)
+ROC_stepwise_lda$auc
+
+accuracy_lda = max(accuracy_lda, accuracy_stepwise_lda)
+
+#QDA
+
+res_qda=qda(DIFF~., data.train)
+
+#prediction:
+pred_qda = predict(res_qda, data.test, type = "class")
+
+## Table confusion et accuracy :
+table(data.test$DIFF, pred_qda$class)
+accuracy_qda = mean(data.test$DIFF == pred_qda$class)
+accuracy_qda
+
+ROC_qda <- roc(data.test$DIFF, as.numeric(pred_qda$class))
+plot(ROC_qda, print.auc=TRUE,  print.auc.y = 0.5)
+ROC_qda$auc
+
+```
+
+
+```{r}
+# CART ------------------------------------------------------------------------------
+library(rpart)
+library(rpart.plot)
+arbre = rpart(DIFF~.,data.train)
+cp.opt <- arbre$cptable[which.min(arbre$cptable[, "xerror"]), "CP"]
+arbre.opt <- prune(arbre,cp=cp.opt)
+
+## prédiction :
+
+pred_arbre = predict(arbre.opt, data.test, type = "class")
+## Table confusion et accuracy :
+table(data.test$DIFF, pred_arbre)
+accuracy_cart = mean(data.test$DIFF == pred_arbre)
+accuracy_cart
+
+## aire sous courbe ROC
+pred_cart = predict(arbre.opt, data.test, type="prob")[,2] 
+ROC_cart <- roc(data.test$DIFF, pred_cart)
+ROC_cart$auc
+```
+
+
+```{r}
+# Random Forest --------------------------------------------------------------------------
+
+library(randomForest)
+fit_RF <- randomForest(DIFF~.,data.train)
+fit_RF
+plot(fit_RF)
+
+
+## prédiction :
+pred_rf = predict(fit_RF, data.test, type="class")
+
+## Table confusion et accuracy :
+table(data.test$DIFF, pred_rf)
+accuracy_RF = mean(data.test$DIFF == pred_rf)
+accuracy_RF
+
+## aire sous courbe ROC
+pred_RF = predict(fit_RF, data.test, type="prob")[,2] 
+ROC_RF <- roc(data.test$DIFF, pred_RF)
+ROC_RF$auc
+```
+
+
+```{r}
+# AdaBoost --------------------------------------------------------------------------
+library(gbm)
+fit.adaboost=gbm(as.numeric(DIFF)-1 ~., data.train, distribution = "adaboost")
+# au lieu de réouvrir le jeu de données, on utilise DIFF en tant que variable qualitative, mais on la transforme en variable quantitative prenant les valeurs 0 et 1.
+# vous pouvez vérifier ce que fait :
+  #  as.numeric(data.train$DIFF)
+  #  as.numeric(data.train$DIFF) -1
+fit.adaboost
+
+### Calibrer B=n.tree par cross-validation : 
+# shrinkage(aka pas dans la descente de gradient) et n.trees sont liée, plus shrinkage est petit, plus n.trees doit etre grand
+fit.adaboost=gbm(as.numeric(DIFF)-1 ~., data.train, distribution = "adaboost",cv.folds = 5, shrinkage = 0.01, n.trees=3000)
+gbm.perf(fit.adaboost)
+B.opt = gbm.perf(fit.adaboost, method="cv")
+
+## prédiction : 
+pred_adaboost = predict(fit.adaboost, newdata=data.test, type = "response", n.trees = B.opt)
+
+## Table confusion et accuracy :
+accuracy_adaboost = mean(data.test$DIFF == pred_rf)
+accuracy_adaboost
+
+## aire sous courbe ROC
+ROC_adaboost <- roc(data.test$DIFF, pred_adaboost)
+ROC_adaboost$auc
+```
+
+
+
+```{r}
+# Regression logistique --------------------------------------------------------------
+
+### Modèle
+logit.train <- glm(DIFF ~ ., family = binomial , data=data.train)
+
+# régression logistique Lasso
+library(glmnet)
+res_Lasso <- glmnet(as.matrix(data.train[,-1]),data.train$DIFF,family='binomial') 
+plot(res_Lasso, label = TRUE)  # en abscisse : norme des coefficients
+plot(res_Lasso, xvar = "lambda", label = TRUE) # en abscisse : log(lambda)
+sum(coef(res_Lasso, s=exp(-7))!=0)
+
+
+cvLasso <- cv.glmnet(as.matrix(data.train[,-1]),data.train$DIFF,family="binomial", type.measure = "class") 
+plot(cvLasso)
+cvLasso$lambda.min
+coef(res_Lasso, s=cvLasso$lambda.min)
+
+#prédiction
+class_logit_lasso=predict(cvLasso, newx = as.matrix(data.test[,-1]), s = 'lambda.min', type = "class")
+
+#Table de confusion et accuracy
+accuracy_logit_lasso = mean(data.test$DIFF == class_logit_lasso)
+accuracy_logit_lasso
+
+#courbe ROC
+pred_logit_lasso=predict(cvLasso, newx = as.matrix(data.test[,-1]), s = 'lambda.min', type = "response")
+#pred_logit_lasso
+ROC_logit_lasso = roc( data.test$DIFF, pred_logit_lasso)
+ROC_logit_lasso$auc 
+
+```
+
+
+```{r}
+# Comparaison --------------------------------------------------------------
+result=matrix(NA, ncol=6, nrow=2)
+rownames(result)=c('accuracy', 'AUC')
+colnames(result)=c('lda', 'qda', 'cart', 'RF', "adaboost", 'logit_lasso')
+result[1,]= c(accuracy_lda, accuracy_qda, accuracy_cart, accuracy_RF,accuracy_adaboost, accuracy_logit_lasso)
+result[2,]=c(ROC_lda$auc, ROC_qda$auc, ROC_cart$auc, ROC_RF$auc,  ROC_adaboost$auc, ROC_logit_lasso$auc)
+result
+apply(result,1, which.max )
+
+plot(ROC_lda, xlim=c(1,0))
+plot(ROC_qda, add=TRUE, col=2)
+plot(ROC_cart, add=TRUE, col=3)
+plot(ROC_RF, add=TRUE, col=4)
+plot(ROC_adaboost, add=TRUE, col=5)
+plot(ROC_logit_lasso, add=TRUE, col=6)
+legend('bottom', col=1:5, paste(c('lda', 'qda', 'cart', 'RF', "ada", 'logit_lasso')),  lwd=1)
+```
+
+
+Exercice 6
+
+```{r}
+# Les données
+rm(list=ls())
+library(ISLR)
+data = Default
+data$default = as.numeric(data$default) - 1
+head(data)
+str(data)
+#attach(data)
+table(data$default)
+```
+Plus de 9000 No pour 300 yes, en effet le jeu est déséquilibré.
+
+
+```{r}
+# Création d'un échantillon train et d'un échantillon test
+set.seed(54)
+n = nrow(data)
+p = ncol(data)-1
+test.ratio = 0.2 # ratio of test/train samples
+n.test = round(n*test.ratio)
+tr = sample(1:n,n.test)
+data.test = data[tr,]
+data.train = data[-tr,]
+sum(data.train$default == 1) / length(data.train$default)
+
+```
+
+
+
+```{r}
+# question 3
+library(randomForest)
+fit_RF <- randomForest(default~., data.train)
+fit_RF
+plot(fit_RF)
+```
+
+Représentation de l’erreur Out of Bag : Les données non utilisées dans les échantillons boostrap sont utilisées pour estimer l’erreur de classification. En noire, erreur de classification totale, en rouge et verte les erreurs de classification pour les 2 classes : vert pour la class Yes et rouge pour la class No. Vérifier que l’erreur OOB pour la classe Yes est très élevée !
+
+
+```{r}
+library(DMwR)
+
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

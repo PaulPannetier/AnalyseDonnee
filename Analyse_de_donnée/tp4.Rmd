@@ -1,0 +1,498 @@
+---
+title: "tp4.Rmd"
+output: html_document
+date: "2023-04-04"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+donnees = read.table("DataLubischew.txt")
+donnees$Species = as.factor(donnees$Species)
+## AFD :
+library(MASS)
+```
+
+
+```{r}
+#ACP 
+library(FactoMineR)
+res = PCA(donnees, quali.sup =7)
+plot(res, select="cos2 0.8")
+```
+Ona  du mal a distinguer les 3 espèces.
+
+```{r}
+library(MASS)
+res=lda(Species ~., data=donnees)
+res
+
+# graphe des individus dans le premier plan discriminant :
+plot(res)
+```
+C'est clairement mieu.
+
+```{r}
+## cercle des corrélations (on n'a plus FactomineR), il faut le recoder : 
+#- on calcule les variables discriminantes (équivalent acp : composantes principales ie coordonnées des individus sur chaque axe discriminant). On les obtient avec la fonction predict (voir la suite de l'exo pour l'utilisation de cette fonction)
+#- puis on calcule les corrélations entre ces nouvelles variables discriminantes et les anciennes variables.
+#- puis on trace le cercle de corrélation.
+#Le code est similaire à celui vu en ACP sur le fichier "notes" lorsqu'on a fait l'ACP à la main. 
+
+F12 = predict(res, prior=rep(1/3,3))$x
+cercle_correlation=cor(donnees[,1:6],F12)
+a=seq(0,2* pi,length=100)
+plot(cos(a), sin(a), type='l',lty=3,xlab='Dim 1', ylab='Dim 2',main="Cercle des corrélations" )
+arrows(0,0,cercle_correlation[,1],cercle_correlation[,2],col=2)
+text(cercle_correlation,labels=colnames(donnees[,1:6]))
+```
+
+On peut remarquer que les données M3 et M2 ne sont pas coller au cercle, on ne peut pas les analiser.
+
+```{r}
+#prediction
+newdata= data.frame(M1=175,M2=125,M3=51,M4=140,M5=14,M6=104)
+
+K=nlevels(donnees$Species)
+pred.afd = predict(res, newdata, prior=rep(1,K)/K)  # on precise prior=rep(1,K)/K pour demander à classer le nouvel individu selon la régle géométrique. Sinon, pas défaut, classe un individi selon la règle du MAP.
+
+
+# classe prédite pour le nouvel individu : 
+pred.afd$class
+
+# ses coordonnées sur les axes discriminants : 
+pred.afd$x
+pred.afd$posterior
+
+#on peut donc représenter ce nouvel individu sur le permier plan discriminant : 
+plot(res)
+points(pred.afd$x, pch=3, col="red")
+```
+
+# EX 2 : comparaison frontières de décision 
+
+## 1er jeu : cas homoscédastique et équiprobable.
+
+Données : 
+```{r}
+set.seed(3)
+library(mvtnorm)
+n=100
+pop1 = rmvnorm(n, c(0,0), matrix(c(1,0,0,1),2))  
+pop2 = rmvnorm(n, c(4,3), matrix(c(1,0,0,1),2))
+X=rbind(pop1,pop2)   #taille (2n,2)
+Y=as.factor(c(rep("A",n),rep("B",n)))
+donnees = data.frame(X,Y)
+```
+
+```{r}
+head(donnees)
+plot(X, pch=as.numeric(Y), col=as.numeric(Y))   
+legend("bottomright", legend=c("classe1", "classe2"), pch=1:2, col=1:2)
+```
+
+### AFD
+Prédiction avec l'AFD : A vous
+
+Frontière de décision : Pour pouvoir visualiser les frontières de décision en fonction des méthodes utilisées, on commence par construire une grille de points :
+```{r}
+library(MASS)
+a=seq(min(X), max(X), length=100)
+b=seq(min(X), max(X), length=100)
+grille=NULL
+    for (i in a) {grille=rbind(grille, cbind(i,b)) } 
+colnames(grille)=c("X1","X2")
+plot(grille, cex=0.2)
+points(X, pch=as.numeric(Y), col=as.numeric(Y),lwd=2)
+```
+
+On prédit les points de la grille avec une méthode (AFD, LDA ou QDA), et on colorie les points en fonction
+de leur prédiction.
+
+```{r}
+res.afd.lda=lda(Y~., data=donnees)
+pred_grille_afd = predict(res.afd.lda, prior=c(0.5,0.5), data.frame(grille))$class
+plot(grille, col=pred_grille_afd, cex=0.1, main="AFD")
+points(grille, col=pred_grille_afd, cex=0.2, main="AFD")
+points(grille, col=pred_grille_afd, cex=0.3, main="AFD")
+points(grille, col=pred_grille_afd, cex=0.4, main="AFD")
+points(res.afd.lda$means, pch=3, col=1:2, lwd=4)
+points(X, pch=as.numeric(Y), col=as.numeric(Y),lwd=2)
+```
+
+### LDA 
+Prédiction avec la LDA : A vous
+
+Frontière de décision : 
+```{r}
+res.afd.lda=lda(Y~., data=donnees)
+pred_grille_lda = predict(res.afd.lda, data.frame(grille))$class
+plot(grille, col=pred_grille_lda, cex=0.2, main="LDA")
+points(grille, col=pred_grille_lda, cex=0.3, main="LDA")
+points(grille, col=pred_grille_lda, cex=0.4, main="LDA")
+points(res.afd.lda$means, pch=3, col=1:2, lwd=4)
+points(X, pch=as.numeric(Y), col=as.numeric(Y),lwd=2)
+```
+
+### QDA 
+Prédiction avec la QDA : A vous
+
+Frontière de décision : 
+```{r}
+res.afd.qda=qda(Y~., data=donnees)
+pred_grille_qda= predict(res.afd.qda, data.frame(grille))$class
+plot(grille, col=pred_grille_qda, cex=0.2, main="QDA")
+points(grille, col=pred_grille_qda, cex=0.3, main="QDA")
+points(grille, col=pred_grille_qda, cex=0.4, main="QDA")
+points(res.afd.qda$means, pch=3, col=1:2, lwd=4)
+points(X, pch=as.numeric(Y), col=as.numeric(Y),lwd=2)
+```
+
+
+## 2ème jeu : homoscédastique et non équiprobable
+```{r}
+set.seed(2)
+n=200
+pop1 = rmvnorm(n, c(0,0), matrix(c(1,0,0,1),2))  #taille (n,2)
+pop2 = rmvnorm(n/10, c(4,3), matrix(c(1,0,0,1),2))
+X=rbind(pop1,pop2)   #taille (2n,2)
+Y=as.factor(c(rep("A",n),rep("B",n/10)))
+donnees = data.frame(X,Y)
+head(donnees)
+
+plot(X, pch=as.numeric(Y), col=as.numeric(Y))   
+legend("bottomright", legend=c("classe1", "classe2"), pch=1:2, col=1:2)
+```
+
+
+```{r}
+res.afd.lda=lda(Y~., data=donnees)
+pred_grille_afd = predict(res.afd.lda, prior=c(0.5,0.5), data.frame(grille))$class
+plot(grille, col=pred_grille_afd, cex=0.1, main="AFD")
+points(grille, col=pred_grille_afd, cex=0.2, main="AFD")
+points(grille, col=pred_grille_afd, cex=0.3, main="AFD")
+points(grille, col=pred_grille_afd, cex=0.4, main="AFD")
+points(res.afd.lda$means, pch=3, col=1:2, lwd=4)
+points(X, pch=as.numeric(Y), col=as.numeric(Y),lwd=2)
+```
+
+
+```{r}
+res.afd.lda=lda(Y~., data=donnees)
+pred_grille_lda = predict(res.afd.lda, data.frame(grille))$class
+plot(grille, col=pred_grille_lda, cex=0.2, main="LDA")
+points(grille, col=pred_grille_lda, cex=0.3, main="LDA")
+points(grille, col=pred_grille_lda, cex=0.4, main="LDA")
+points(res.afd.lda$means, pch=3, col=1:2, lwd=4)
+points(X, pch=as.numeric(Y), col=as.numeric(Y),lwd=2)
+```
+
+```{r}
+res.afd.qda=qda(Y~., data=donnees)
+pred_grille_qda= predict(res.afd.qda, data.frame(grille))$class
+plot(grille, col=pred_grille_qda, cex=0.2, main="QDA")
+points(grille, col=pred_grille_qda, cex=0.3, main="QDA")
+points(grille, col=pred_grille_qda, cex=0.4, main="QDA")
+points(res.afd.qda$means, pch=3, col=1:2, lwd=4)
+points(X, pch=as.numeric(Y), col=as.numeric(Y),lwd=2)
+```
+
+
+## 3 ème jeu  : hétéroscédastique
+```{r}
+set.seed(666666)
+pop1 = rmvnorm(n, c(0,0), matrix(c(1,0,0,1),2))  #taille (n,2)
+pop2 = rmvnorm(n, c(4,3), matrix(c(3,0,0,0.1),2))
+X=rbind(pop1,pop2)   #taille (2n,2)
+Y=as.factor(c(rep("A",n),rep("B",n)))
+donnees = data.frame(X,Y)
+head(donnees)
+
+plot(X, pch=as.numeric(Y), col=as.numeric(Y))   
+legend("bottomright", legend=c("classe1", "classe2"), pch=1:2, col=1:2)
+```
+
+```{r}
+res.afd.lda=lda(Y~., data=donnees)
+pred_grille_afd = predict(res.afd.lda, prior=c(0.5,0.5), data.frame(grille))$class
+plot(grille, col=pred_grille_afd, cex=0.1, main="AFD")
+points(grille, col=pred_grille_afd, cex=0.2, main="AFD")
+points(grille, col=pred_grille_afd, cex=0.3, main="AFD")
+points(grille, col=pred_grille_afd, cex=0.4, main="AFD")
+points(res.afd.lda$means, pch=3, col=1:2, lwd=4)
+points(X, pch=as.numeric(Y), col=as.numeric(Y),lwd=2)
+```
+
+
+```{r}
+res.afd.lda=lda(Y~., data=donnees)
+pred_grille_lda = predict(res.afd.lda, data.frame(grille))$class
+plot(grille, col=pred_grille_lda, cex=0.2, main="LDA")
+points(grille, col=pred_grille_lda, cex=0.3, main="LDA")
+points(grille, col=pred_grille_lda, cex=0.4, main="LDA")
+points(res.afd.lda$means, pch=3, col=1:2, lwd=4)
+points(X, pch=as.numeric(Y), col=as.numeric(Y),lwd=2)
+```
+
+```{r}
+res.afd.qda=qda(Y~., data=donnees)
+pred_grille_qda= predict(res.afd.qda, data.frame(grille))$class
+plot(grille, col=pred_grille_qda, cex=0.2, main="QDA")
+points(grille, col=pred_grille_qda, cex=0.3, main="QDA")
+points(grille, col=pred_grille_qda, cex=0.4, main="QDA")
+points(res.afd.qda$means, pch=3, col=1:2, lwd=4)
+points(X, pch=as.numeric(Y), col=as.numeric(Y),lwd=2)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

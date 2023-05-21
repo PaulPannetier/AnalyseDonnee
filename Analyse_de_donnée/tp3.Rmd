@@ -1,0 +1,256 @@
+---
+title: "tp3.Rmd"
+output: html_document
+date: "2023-03-21"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Exercice 2 classification non supervisé
+
+```{r}
+data = read.table("fromage.txt", header = TRUE, row.names = 1)
+str(data)
+```
+
+```{r}
+summary(data)
+```
+```{r}
+dim(data)
+```
+```{r}
+pairs(data)
+```
+
+On fait une CAH centré réduite
+
+```{r}
+data = scale(data)
+matriceDist = dist(data)
+hc = hclust(matriceDist, method = "ward.D2")
+```
+
+
+```{r}
+plot(hc)
+```
+
+DUcoup on garde 5 groupes
+
+```{r}
+plot(hc)
+rect.hclust(hc, k = 5)
+groupes.cah <- cutree(hc, k = 5)
+groupes.cah
+table(groupes.cah)
+```
+
+```{r}
+for(i in 1:5)
+{
+  print("groupe : ")
+  print(i)
+  print(colMeans(data[groupes.cah == i,]))
+}
+```
+
+```{r}
+kmeans.result=kmeans(data, centers = 5, nstart = 50000)
+#dans center on peut soit mettre le nombre de groupe, soit les centres
+#des groupes sous forme d'un vecteur (genre celui quon a eu dans la CAH)
+names(kmeans.result)
+kmeans.result$size
+kmeans.result$centers
+kmeans.result$cluster
+table(kmeans.result$cluster)
+```
+
+```{r}
+K = 20
+inertie_intra = rep(0,K)
+
+for(i in 1:K)
+{
+  kmeans_res_k = kmeans(data, center = i, nstart = 10000)
+  inertie_intra[i] = kmeans_res_k$tot.withinss
+}
+plot(1:K, inertie_intra, type = "b")
+```
+
+
+
+```{r}
+pairs(data, col=kmeans.result$cluster)
+```
+
+On fait kmeans avec les point de la CAH
+
+```{r}
+
+```
+
+
+On fait une réduction de dimension avec l'ACP
+
+```{r}
+library(FactoMineR)
+pca = PCA(data)
+#plot(pca, select="cos2 0.8")
+plot(pca)
+```
+
+Ducoup on garde 2 axes. On affiche les silouette
+
+```{r}
+library(cluster)
+sil = silhouette(kmeans.result$cluster, dist(data))
+rownames(sil) = rownames(data)
+sil
+
+```
+ 
+```{r}
+plot(sil, cex = 0.52)
+```
+On use l'algo pam
+
+```{r}
+library(cluster)
+pam.result = pam(data, 5)
+par(mfrow = c(1,2))
+plot(pam.result, cex = 0.6)
+```
+Exercice 3
+
+```{r}
+ozone = read.csv2("ozone.csv", sep = ";")
+ozone = ozone[,c(-1)]#on vire la colonne obs
+```
+
+
+
+
+```{r}
+library(FactoMineR)
+
+ozoneHCPC = HCPC(ozone)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

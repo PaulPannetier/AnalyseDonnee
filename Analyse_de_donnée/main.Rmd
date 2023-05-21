@@ -1,6 +1,8 @@
 ---
 title: "main.Rmd"
-output: html_document
+output:
+  pdf_document: default
+  html_document: default
 date: "2023-05-14"
 ---
 
@@ -10,7 +12,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 Nous allons présentez ici vous présentez otre projet d'analyse de données sur une base de données rassemblants beaucoup de caractéristiques sur 20052 plats des cuisines du monde entiers. Cette base public est disponible sur Kaggle avec ce lien https://www.kaggle.com/code/upsylend/pr-diction-sur-des-recettes-de-cuisine/input.
 
-La base possède notamment une variable rating (entre 0.0 et 5.0) représentant si un plat est apprécié/goutu, le but ce cette analyse et de prédir la valeur de la variable rating en fonction des autres variables.
+La base possède notamment une variable rating (entre 0.0 et 5.0) représentant si un plat est apprécié/goutu, le but ce cette analyse et de prédire la valeur de la variable rating en fonction des autres variables ainsi que faire de la classification des plats afin d'en regrouper certain.
 
 La base de données ayant beaucoup de variable, nous avons décidé de ne gardé que les principales, de plus énormément de variables n'ont que 2 modalitées (comme la variable dissant si oui ou non il y a du bacon dans le plat) qui vaut 1 que très rarement.
 Nous ne garderons que les variables :
@@ -27,40 +29,301 @@ De plus pour accélérer les calculs les test seront fait avec les 1000 premièr
 
 
 ```{r}
+library(tidyr)
 rm(list=ls())
-data = read.csv2("epi_r.csv", sep =",")
-data = data[c(1,2,3,4,5,6,15,39)]
-data = data[data$rating != "",]
+data = read.csv("epi_r.csv", sep =",")
+data = data[c(2,3,4,5,6,15,39)]
 data = data[data$calories != "",]
 data = data[data$protein != "",]
 data = data[data$fat != "",]
 data = data[data$sodium != "",]
+data = drop_na(data)
+data$rating = as.factor(((data$rating > 1) + (data$rating > 2) + (data$rating > 3) + (data$rating > 4)) / 4)
 
-#On met tout son forme numérique
-data$rating = as.factor(data$rating)
-data$calories = as.factor(data$calories)
-data$protein = as.factor(data$protein)
-data$fat = as.factor(data$fat)
-data$sodium = as.factor(data$sodium)
-data$alcoholic = as.factor(data$alcoholic)
-data$bake = as.factor(data$bake)
-
-#on ne garde que 500 lignes pour le moment
-nbRows = 500
+nbRows = 15000
 data = data[c(1:nbRows),]
+
+#transformons les 3 dernières colonnes en var quali ?
+#data$bake = as.factor(data$bake)
+#data$alcoholic = as.factor(data$alcoholic)
+#data$X.cakeweek = as.factor(data$X.cakeweek)
 
 head(data)
 
 ```
 
+Prédiction : 
 
-On fait une AFC
+Le but de cette partie est de prédire la variable rating de notre jeu de données a partir des 7 autres variables.
+Pour cela nous allons entrainé puis tester différents modèles pour voir lequels est le plus adapté.
+
+Pour cela commencons par couper notre jeu de données en 2, un pour l'apprentissage des modèles et un autre pour l'évaluation des modèles.
+
 ```{r}
-#stat desdcriptive
-barplot(apply(data,2,sum)/sum(data), las=3)#marche pas ptdr
+seed = 1 
+set.seed(seed)
+n = nrow(data)
+p = ncol(data)-1
+test.ratio = 0.2 # ratio of test/train samples
+n.test = round(n*test.ratio)
+tr = sample(1:n,n.test)
+data.test = data[tr,]
+data.train = data[-tr,]
 
-#1 faire test du khi-deux pour vérifier la liaisons des variables qualitatives
-chisq.test(dataAFC)
+#test
+#data.train$rating = ((data.train$rating > 1) + (data.train$rating > 2) + (data.train$rating > 3) + (data.train$rating > 4)) / 4
+#data.test$rating = ((data.test$rating > 1) + (data.test$rating > 2) + (data.test$rating > 3) + (data.test$rating > 4)) / 4
+#data.train$rating = as.factor(data.train$rating)
+#data.test$rating = as.factor(data.test$rating)
 
 ```
+
+
+Commencons par les modèles LDA et QDA.
+
+```{r}
+library(pROC)
+res_lda = lda(rating~., data.train)
+#proba a posteriori de succes (dans la deuxième colonne) : 
+pred_lda <- predict(res_lda, data.test, type = "class")#$posterior[,2] 
+
+## Table confusion et accuracy :
+table(data.test$rating, pred_lda$class)
+accuracy_lda = mean(data.test$rating == pred_lda$class)
+accuracy_lda
+
+ROC_lda <- roc(data.test$rating,as.numeric(pred_lda$class))
+plot(ROC_lda, print.auc=TRUE,  print.auc.y = 0.5)
+ROC_lda$auc
+
+#lda version stepwise
+
+library(klaR)
+stepwise_lda= stepclass(rating~., data=data.train, method="lda", direction="backward")
+stepwise_lda
+res_stepwise_lda = lda(stepwise_lda$formula, data=data.train)
+
+pred_stepwise_lda <- predict(res_lda, data.test, type = "class")#$posterior[,2] 
+
+## Table confusion et accuracy :
+table(data.test$rating, pred_stepwise_lda$class)
+accuracy_stepwise_lda = mean(data.test$rating == pred_stepwise_lda$class)
+accuracy_stepwise_lda
+
+ROC_stepwise_lda <- roc(data.test$rating,as.numeric(pred_stepwise_lda$class))
+plot(ROC_stepwise_lda, print.auc=TRUE,  print.auc.y = 0.5)
+ROC_stepwise_lda$auc
+
+accuracy_lda = max(accuracy_lda, accuracy_stepwise_lda)
+
+#QDA
+
+res_qda=qda(rating~., data.train)
+
+#prediction:
+pred_qda = predict(res_qda, data.test, type = "class")
+
+## Table confusion et accuracy :
+table(data.test$rating, pred_qda$class)
+accuracy_qda = mean(data.test$rating == pred_qda$class)
+accuracy_qda
+
+ROC_qda <- roc(data.test$rating, as.numeric(pred_qda$class))
+plot(ROC_qda, print.auc=TRUE,  print.auc.y = 0.5)
+ROC_qda$auc
+
+```
+
+
+Mise en place du modèle CART
+
+```{r}
+# CART ------------------------------------------------------------------------------
+library(rpart)
+library(rpart.plot)
+arbre = rpart(rating~.,data.train)
+cp.opt <- arbre$cptable[which.min(arbre$cptable[, "xerror"]), "CP"]
+arbre.opt <- prune(arbre,cp=cp.opt)
+
+## prédiction :
+
+pred_arbre = predict(arbre.opt, data.test, type = "class")
+## Table confusion et accuracy :
+table(data.test$rating, pred_arbre)
+accuracy_cart = mean(data.test$rating == pred_arbre)
+accuracy_cart
+
+## aire sous courbe ROC
+pred_cart = predict(arbre.opt, data.test, type="prob")[,2] 
+ROC_cart <- roc(data.test$rating, pred_cart)
+ROC_cart$auc
+```
+
+
+En utilisant le modèle de random forest.
+
+```{r}
+# Random Forest --------------------------------------------------------------------------
+
+library(randomForest)
+fit_RF <- randomForest(rating~.,data.train)
+fit_RF
+plot(fit_RF)
+
+
+## prédiction :
+pred_rf = predict(fit_RF, data.test, type="class")
+
+## Table confusion et accuracy :
+table(data.test$rating, pred_rf)
+accuracy_RF = mean(data.test$rating == pred_rf)
+accuracy_RF
+
+## aire sous courbe ROC
+pred_RF = predict(fit_RF, data.test, type="prob")[,2]
+ROC_RF <- roc(data.test$rating, pred_RF)
+ROC_RF$auc
+```
+
+
+```{r}
+# Regression logistique --------------------------------------------------------------
+
+### Modèle
+logit.train <- glm(rating ~ ., family = binomial , data=data.train)
+
+# régression logistique Lasso
+library(glmnet)
+res_Lasso <- glmnet(as.matrix(data.train[,-1]),data.train$rating, family='multinomial') 
+plot(res_Lasso, label = TRUE)  # en abscisse : norme des coefficients
+plot(res_Lasso, xvar = "lambda", label = TRUE) # en abscisse : log(lambda)
+#sum(coef(res_Lasso, s=exp(-7))!=0)
+
+
+cvLasso <- cv.glmnet(as.matrix(data.train[,-1]),data.train$rating,family="multinomial", type.measure = "class") 
+plot(cvLasso)
+cvLasso$lambda.min
+coef(res_Lasso, s=cvLasso$lambda.min)
+
+#prédiction
+class_logit_lasso=predict(cvLasso, newx = as.matrix(data.test[,-1]), s = 'lambda.min', type = "class")
+
+#Table de confusion et accuracy
+accuracy_logit_lasso = mean(data.test$rating == class_logit_lasso)
+accuracy_logit_lasso
+
+#courbe ROC
+pred_logit_lasso_tmp = predict(cvLasso, newx = as.matrix(data.test[,-1]), s = 'lambda.min', type = "response")
+
+pred_logit_lasso = 1:n.test
+for(i in 1:n.test)
+{
+  pred_logit_lasso[i] = pred_logit_lasso_tmp[i,2,] * 0.25 + pred_logit_lasso_tmp[i,3,] * 0.5 + pred_logit_lasso_tmp[i,4,] * 0.75 + pred_logit_lasso_tmp[i,5,] * 1
+}
+
+#pred_logit_lasso
+ROC_logit_lasso = roc(data.test$rating, pred_logit_lasso)
+ROC_logit_lasso$auc
+
+```
+
+
+
+
+
+
+
+
+```{r}
+# Comparaison --------------------------------------------------------------
+result=matrix(NA, ncol=5, nrow=2)
+rownames(result)=c('accuracy', 'AUC')
+colnames(result)=c('lda', 'qda', 'cart', 'RF', 'logit_lasso')
+result[1,]= c(accuracy_lda, accuracy_qda, accuracy_cart, accuracy_RF, accuracy_logit_lasso)
+result[2,]=c(ROC_lda$auc, ROC_qda$auc, ROC_cart$auc, ROC_RF$auc, ROC_logit_lasso$auc)
+result
+apply(result,1, which.max )
+
+plot(ROC_lda, xlim=c(1,0))
+plot(ROC_qda, add=TRUE, col=2)
+plot(ROC_cart, add=TRUE, col=3)
+plot(ROC_RF, add=TRUE, col=4)
+plot(ROC_logit_lasso, add=TRUE, col=5)
+legend('bottom', col=1:5, paste(c('lda', 'qda', 'cart', 'RF', 'logit_lasso')), lwd=1)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 

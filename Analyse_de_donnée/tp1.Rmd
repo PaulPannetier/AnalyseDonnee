@@ -1,0 +1,266 @@
+---
+title: "tp1.rmd"
+output: html_document
+date: "2023-03-14"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+## Jeu de données notes
+notes=read.table("notes_ACP.txt")
+summary(notes)
+boxplot(notes)
+```
+
+```{r}
+pairs(notes)
+
+```
+```{r}
+# centrer à la main :
+p=4; n=9
+X= matrix(NA, ncol=p, nrow = n)
+for (j in 1:p)
+{ X[,j]=(notes[,j] - mean(notes[,j])) /  (sd(notes[,j]) * sqrt((n-1)/n)) }
+
+#affciche S la matrice de covariance
+S = ((n-1)/n) * cov(X)
+S
+#on calcule ses valeurs sales
+eigens = eigen(S)
+lambda = eigens$value
+vecteurPropre = eigens$vector
+lambda
+vecteurPropre
+```
+
+```{r}
+#calcule de l'inertie <=> tr(cov(x)) = 
+I = sum(diag(S))
+I - sum(lambda)
+I
+```
+```{r}
+partInertie = lambda / sum(lambda)
+partInertie
+barplot(partInertie)
+#ducooup on garde que 2 axes!
+```
+
+```{r}
+F12 =   X %*% vecteurPropre[,1:2]
+colnames(F12) =   paste("Dim", 1:2)
+plot(F12,xlab='Dim1',ylab='Dim2', xlim=c(-4,4), ylim=c(-2,2), type="n")
+text(F12,labels=row.names(notes),cex=1.5)   
+title(main="représentation des ndividus")
+abline(h=0)
+abline(v=0)
+```
+
+```{r}
+cercle_correlation=cor(X,F12)
+a=seq(0,2* pi,length=100)
+plot(cos(a), sin(a), type='l',lty=3,xlab='Dim 1', ylab='Dim
+2',main="Cercle des corrélations" )
+arrows(0,0,cercle_correlation[,1],cercle_correlation[,2],col=2)
+text(cercle_correlation,labels=colnames(notes))
+```
+
+```{r}
+cos2 = cbind(F12[,1]^2/apply(X,1,norm),f12[,2]^2/apply(X,1,norm))
+```
+
+
+```{r}
+#utilisation du package FactoMiner
+library(FactoMineR)
+```
+
+```{r}
+res = PCA(notes)
+res
+res$eig
+```
+
+
+```{r}
+plot(res)
+```
+
+
+Exercice 2
+
+```{r}
+## Jeu de données ozones
+ozone = read.csv2("ozone.csv", sep = ";")
+ozone = ozone[,c(-1, -13, -14)]#on vire les colonne obs, vent et pluie
+ozone = ozone[1:20,]#on garde que les 20 premières observations
+summary(ozone)
+```
+```{r}
+#go pour l'acp
+pca = PCA(ozone)
+plot(pca, select="cos2 0.8")
+
+```
+```{r}
+#same avec le dataset complet
+ozone = read.csv2("ozone.csv", sep = ";")
+ozone = ozone[,c(-1, -13, -14)]#on vire les colonne obs, vent et pluie
+pca = PCA(ozone)
+plot(pca, select="cos2 0.8")
+```
+```{r}
+#same avec le dataset complet
+ozone = read.csv2("ozone.csv", sep = ";")
+#ozone = ozone[,c(-1)]#on vire les colonne obs
+pca = PCA(ozone, quali.supp = c(13, 14))
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+```{r}
+ozone = read.csv2("test.csv", sep=",")
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
