@@ -2,7 +2,9 @@
 title: "Untitled"
 author: "Marilyne"
 date: '2023-05-14'
-output: html_document
+output:
+  pdf_document: default
+  html_document: default
 ---
 
 
@@ -37,6 +39,7 @@ head(data)
 
 ```
 
+1) Analyse des données
 
 ```{r}
 boxplot(data)
@@ -44,22 +47,37 @@ boxplot(data)
 ```{r}
 pairs(data)
 ```
+On remarque ici qu'il n y'a pas de lien de corrélation entre les différentes colones car aucune forme linéaire n'apparaît.
+
+
+2) Analyse avec l'ACP
 
 ```{r}
 library(FactoMineR)
 res <- PCA( data )
 res
 ```
+Ici on peut interpréter le graphe des variables en disant que l'axe 1  est fortement corrélé à fat, sodium protein et calories. Cet axe représente alors à droite les recette les plus calorique salées et protéinées et à gauche celles qui ne le sont pas. 
+L'axe 2 quant à lui est corrélé positivement avec rating et négativement avec alcoholic. On peut dire alors que cet axe distingue les recettes les mieux notées en haut contre celles mal notées et alcolisées vers le bas.
+
+
+Observons le pourcentage d'inertie expliqué.
 ```{r}
 barplot(res$eig[,2])
 ```
 ```{r}
 plot(res,choix="ind",c(1,3))  #faire toutes les combinaisons d'axes pour voir la représentation
 ```
+```{r}
+plot(res,choix="ind",c(1,4))
+```
+On voit qu'il y'a particulièrement 4 valeurs qui explosent par rapport au reste du dataset. Il faudrait les suppprimer et voir comment le reste des données se comporte.
 
 ```{r}
 plot(res, select="cos2 0.8", choix="ind")
 ```
+On observe par le graphe obtenu que les individus 5139, 2977 et 1305 sont les mieux représentés.
+
 ```{r}
 plot(res, select="cos2 4", choix="ind")
 ```
@@ -72,22 +90,46 @@ res$var$contrib
 ```
 
 
-#########AFC
+3) Analyse avec l'AFC
 ```{r}
 chisq.test(data)
 ```
+On voit que la p-value est <0.5 donc on peut faire l'afc
 ```{r}
-barplot(apply(data,2,sum)/sum(data),las=3)
+#barplot(apply(data,2,sum)/sum(data),las=3)
 ```
 ```{r}
-barplot(apply(data,1,sum)/sum(data),las=3)
+#barplot(apply(data,1,sum)/sum(data),las=3)
 ```
 ```{r}
 data2 = data[c(1:10),]
 res <- CA( data2 )
 summary(res)
 ```
-continuer l'afc
+Regardons les colonnes qui contribuent le plus à la formation des axes
+```{r}
+res$col$contrib
+```
+
+```{r}
+#on regarde les 4 individu qui contribuent le plus
+plot(res, invisible = "row",selectCol="contrib 4")
+```
+Donc dim1 : calories / sodium
+dim2 : protein/fat
+ce qui correspond bien aux résultats précédent.
+
+
+
+```{r}
+plot(res, selectRow="cos2 0.6",selectCol="cos2 0.6", cex=0.6)
+```
+On peut regarder le rapprochement entre les recettes et les éléments qui les composent.
+Les recette numéro 2 et 10 sont riche en sodium et les recettes 13 et 5 est caloriques
+
+
+
+Méthodes de classification :
 
 ```{r}
 library(MASS)
@@ -98,13 +140,13 @@ res
 plot(res)
 #on a pas 2 axes discriminants d'où un graphe en pair
 ```
-
+Prédiction avec la lda
 ```{r}
 #prediction
 newdata= data.frame(calories=175,protein=125,fat=51,sodium=140,X.cakeweek=1,alcoholic=0,bake=1)
 
 K=nlevels(data$rating)
-pred.afd = predict(res, newdata)  # on precise prior=rep(1,K)/K pour demander à classer le nouvel individu selon la régle géométrique. Sinon, pas défaut, classe un individi selon la règle du MAP.
+pred.afd = predict(res, newdata) #par défaut, classe un individi selon la règle du MAP.
 #on l'oblige à faire comme si n1=n2 (voire cours)
 pred.afd
 ```
@@ -113,15 +155,164 @@ pred.afd
 ```{r}
 pred.afd$posterior #proba à posteriori
 ```
-Regression logistique
+
+
+Classification avec Qda
 ```{r}
-res2 <- glm(rating ~ ., family = binomial , data=data)
-summary(res2)
+#res2=qda(rating ~., data=data)
+#res2
+#ne marche pas
+```
+
+```{r}
+# Création d'un échantillon train et d'un échantillon test
+set.seed(1)
+n <- nrow(data)
+p <- ncol(data)-1
+test.ratio <- .2 # ratio of test/train samples
+n.test <- round(n*test.ratio)
+n.test
+tr <- sample(1:n,n.test)
+data.test <- data[tr,]
+data.train <- data[-tr,]
+```
+
+```{r}
+#avec lda et qda
+res_lda = lda(rating~., data=data.train)
+#res_qda = qda(rating~., data=data.train)
+#predict(res_lda,data.test)
+#predict(res_qda,data.test)
+pred_lda = predict(res_lda,data.test)
+#pred_qda = predict(res_qda,data.test)
+table(pred_lda$class,data.test$rating)
+#table(pred_qda$class,data.test$rating)
+```
+
+
+Classification non supervisée avec cah et Kmeans
+```{r}
+data.cr <- scale(data,center=TRUE, scale=TRUE)
+d.data.cr <- dist(data.cr)
+#On utilise la mesure de Ward :
+cah.ward <- hclust(d.data.cr, method="ward.D2")
+#On affichage le dendrogramme :
+plot(cah.ward, hang=-1)
+
 ```
 ```{r}
-library(MASS)
-res_AIC <- step(res2)
-#par défaut : direction ="backward"
+#cah.ward$height
+barplot(cah.ward$height)
 ```
+On va prendre K=5 , c'est le plus raisonnable en regardant le dendogramme
+
+
+```{r}
+plot(cah.ward, hang =-1,main="ward.D2")
+K=5
+rect.hclust(cah.ward,K)
+```
+
+
+```{r}
+groupes.cah <- cutree(cah.ward, K)
+groupes.cah
+```
+
+```{r}
+table(groupes.cah)
+```
+
+Interprétation des groupes
+```{r}
+for (i in 1:K)
+{ cat("groupe", i,"\n")
+I=which(groupes.cah==i)
+print(rownames(data)[I]) }
+```
+
+Caractéristique de chaque groupe
+
+```{r}
+Means_groupes <- matrix(NA, nrow=K, ncol=dim(data)[2])
+colnames(Means_groupes)=colnames(data)
+rownames(Means_groupes) =1:K
+for (i in 1:K) Means_groupes[i,]<- colMeans(data[groupes.cah==i,])
+round(Means_groupes)
+```
+
+```{r}
+K=5
+kmeans.result <- kmeans(data.cr,centers=K)
+kmeans.result$size
+```
+
+
+```{r}
+kmeans.result$cluster
+```
+```{r}
+kmeans.result <- kmeans(data.cr,centers=K)
+kmeans.result$size
+
+
+```
+On voit que le résultat change de précédement , car c'est dépendant de l'initialisation.
+Il faut donc faire une bonne initialisation avec cah ou une stabilisation en lançant plusieurs fois Kmeans.
+
+```{r}
+kmeans.result <- kmeans(data.cr,centers=K,nstart=1000)
+```
+
+Comparaison
+```{r}
+table(groupes.cah,kmeans.result$cluster)
+```
+
+
+Autre façon de choisir K:
+```{r}
+inertie.intra <- rep(0,times=10)
+for (k in 1:10){
+kmeans.result <- kmeans(data.cr,centers=k,nstart=100)
+inertie.intra[k] <- kmeans.result$tot.withinss/kmeans.result$totss
+}
+# graphique
+plot(1:10,inertie.intra,type="b",xlab="Nb. de groupes",ylab="% inertie intra")
+```
+On voit bien qu'à partir de K=5 ou 6 l'ajout d'une classe ne diminue pas significativement la part d'inertie
+
+Interprétation avec l'acp
+```{r}
+K=5
+kmeans.result <- kmeans(data.cr,centers=K,nstart=1000)
+```
+
+```{r}
+#on ajoute la colonne classe au dataset
+
+data.Avecclasse = cbind.data.frame(data, classe = factor(kmeans.result$cluster))
+head(data.Avecclasse)
+
+```
+```{r}
+res=PCA(data.Avecclasse,scale.unit=TRUE, quali.sup = 9, graph=FALSE)
+plot(res, choix="ind", habillage=9, cex=0.7)
+```
+```{r}
+#on affiche les mieux représentés
+
+plot(res, choix="ind", habillage=9, cex=0.7,select= "cos2 0.7")
+```
+```{r}
+library(cluster)
+sil= silhouette(kmeans.result$cluster,dist(data.cr))
+rownames(sil)=rownames(data)
+sil
+plot(sil)
+```
+
+
+
 
 
