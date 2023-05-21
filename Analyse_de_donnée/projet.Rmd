@@ -1,0 +1,127 @@
+---
+title: "Untitled"
+author: "Marilyne"
+date: '2023-05-14'
+output: html_document
+---
+
+
+
+```{r}
+data = read.csv2("epi_r.csv", sep =",")
+head(data)
+
+```
+
+```{r}
+library(tidyr)
+rm(list=ls())
+data = read.csv("epi_r.csv", sep =",")
+data = data[c(2,3,4,5,6,7,15,39)]
+data = data[data$calories != "",]
+data = data[data$protein != "",]
+data = data[data$fat != "",]
+data = data[data$sodium != "",]
+data = drop_na(data)
+data = data[c(1:5000),]
+
+```
+```{r}
+head(data)
+```
+```{r}
+#transformons les 3 dernières colonnes en var quali ?
+#data$bake = as.factor(data$bake)
+#data$alcoholic = as.factor(data$alcoholic)
+#data$X.cakeweek = as.factor(data$X.cakeweek)
+
+```
+
+
+```{r}
+boxplot(data)
+```
+```{r}
+pairs(data)
+```
+
+```{r}
+library(FactoMineR)
+res <- PCA( data )
+res
+```
+```{r}
+barplot(res$eig[,2])
+```
+```{r}
+plot(res,choix="ind",c(1,3))  #faire toutes les combinaisons d'axes pour voir la représentation
+```
+
+```{r}
+plot(res, select="cos2 0.8", choix="ind")
+```
+```{r}
+plot(res, select="cos2 4", choix="ind")
+```
+
+```{r}
+summary(res)
+```
+```{r}
+res$var$contrib
+```
+
+
+#########AFC
+```{r}
+chisq.test(data)
+```
+```{r}
+barplot(apply(data,2,sum)/sum(data),las=3)
+```
+```{r}
+barplot(apply(data,1,sum)/sum(data),las=3)
+```
+```{r}
+data2 = data[c(1:10),]
+res <- CA( data2 )
+summary(res)
+```
+continuer l'afc
+
+```{r}
+library(MASS)
+res=lda(rating ~., data=data)
+res
+```
+```{r}
+plot(res)
+#on a pas 2 axes discriminants d'où un graphe en pair
+```
+
+```{r}
+#prediction
+newdata= data.frame(calories=175,protein=125,fat=51,sodium=140,X.cakeweek=1,alcoholic=0,bake=1)
+
+K=nlevels(data$rating)
+pred.afd = predict(res, newdata)  # on precise prior=rep(1,K)/K pour demander à classer le nouvel individu selon la régle géométrique. Sinon, pas défaut, classe un individi selon la règle du MAP.
+#on l'oblige à faire comme si n1=n2 (voire cours)
+pred.afd
+```
+
+
+```{r}
+pred.afd$posterior #proba à posteriori
+```
+Regression logistique
+```{r}
+res2 <- glm(rating ~ ., family = binomial , data=data)
+summary(res2)
+```
+```{r}
+library(MASS)
+res_AIC <- step(res2)
+#par défaut : direction ="backward"
+```
+
+
