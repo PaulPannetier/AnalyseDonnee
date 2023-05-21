@@ -8,10 +8,28 @@ date: "2023-05-14"
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
+Nous allons présentez ici vous présentez otre projet d'analyse de données sur une base de données rassemblants beaucoup de caractéristiques sur 20052 plats des cuisines du monde entiers. Cette base public est disponible sur Kaggle avec ce lien https://www.kaggle.com/code/upsylend/pr-diction-sur-des-recettes-de-cuisine/input.
+
+La base possède notamment une variable rating (entre 0.0 et 5.0) représentant si un plat est apprécié/goutu, le but ce cette analyse et de prédir la valeur de la variable rating en fonction des autres variables.
+
+La base de données ayant beaucoup de variable, nous avons décidé de ne gardé que les principales, de plus énormément de variables n'ont que 2 modalitées (comme la variable dissant si oui ou non il y a du bacon dans le plat) qui vaut 1 que très rarement.
+Nous ne garderons que les variables :
+- rating (appréciation du plat)
+- calories (énergie apporté par le plat)
+- protein (quantité de protéines)
+- fat (quantité de graisses)
+- sodium (quantité de sel)
+- alcoholic (0 ou 1, présence d'alcool)
+- bake (0 ou 1, plat rotie)
+
+En supprimant les lignes avec au moins une valeur manquante sur ces variable nous n'avons plus que 15864 plats disponibles pour notre études.
+De plus pour accélérer les calculs les test seront fait avec les 1000 premières observations, les modèle les plus prommeteur seront élargie par la suite.
+
+
 ```{r}
 rm(list=ls())
 data = read.csv2("epi_r.csv", sep =",")
-data = data[c(1,2,3,4,5,6,7,15,39)]
+data = data[c(1,2,3,4,5,6,15,39)]
 data = data[data$rating != "",]
 data = data[data$calories != "",]
 data = data[data$protein != "",]
@@ -21,15 +39,14 @@ data = data[data$sodium != "",]
 #On met tout son forme numérique
 data$rating = as.factor(data$rating)
 data$calories = as.factor(data$calories)
-data$protein = as.factor(data$rating)
+data$protein = as.factor(data$protein)
 data$fat = as.factor(data$fat)
 data$sodium = as.factor(data$sodium)
-data$X.cakeweek = as.factor(data$X.cakeweek)
 data$alcoholic = as.factor(data$alcoholic)
 data$bake = as.factor(data$bake)
 
 #on ne garde que 500 lignes pour le moment
-nbRows = 5000
+nbRows = 500
 data = data[c(1:nbRows),]
 
 head(data)
