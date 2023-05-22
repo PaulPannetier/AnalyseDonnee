@@ -26,7 +26,7 @@ Nous ne garderons que les variables :
 - alcoholic (0 ou 1, présence d'alcool)
 - bake (0 ou 1, plat rotie)
 
-En supprimant les lignes avec au moins une valeur manquante sur ces variable nous n'avons plus que 15864 plats disponibles pour notre études.
+En supprimant les lignes avec au moins une valeur manquante sur ces variables nous n'avons plus que 15864 plats disponibles pour notre études.
 
 
 
@@ -53,14 +53,14 @@ boxplot(data)
 ```
 
 
-On observe des grandes différences entre toutes nos variable, il faudra en prendre compte lors de l'analyse.
+On observe des grandes différences entre toutes nos variables, il faudra en prendre compte lors de l'analyse.
 
 ```{r}
 pairs(data)
 ```
 
 
-Ce diagramme permet de faire une analyse bivariée des données, si des données sont corrélées, on va observer une relation linéaires entre les deux variables.
+Ce diagramme permet de faire une analyse bivariée des données, si des données sont corrélées, on va observer une relation linéaire entre les deux variables.
 
 Ainsi les variables calories et fat ont l'air d'être corrélées, ainsi que les variables calories et sodium.
 Nous allons vérifier cela en faisant une analyse des composantes principales (ACP).
@@ -74,7 +74,7 @@ res
 
 
 Ici on peut interpréter le graphe des variables en disant que l'axe 1 est fortement corrélé à fat, protein et calories. Cet axe représente alors à droite les recettes les plus caloriques, salées et protéinées (c'est à dire les plats assez lourds) et à gauche celles qui ne le sont pas(les plats légers). 
-L'axe 2 quant à lui est corrélé positivement avec les variable bake et rating et négativement avec alcoholic. On peut dire alors que cet axe distingue les recettes les mieux notées en haut (c'est à dire les plats appréciés) contre celles mal notées et alcolisées vers le bas.
+L'axe 2 quant à lui est corrélé positivement avec les variable bake et rating et négativement avec alcoholic. On peut dire alors que cet axe distingue les recettes les mieux notées en haut (c'est à dire les plats appréciés) contre celles mal notées et alcoolisées vers le bas.
 
 Sur le graphe des individus on peut dire que la recette 283 (Ribs première braisées avec pois chiches et raisins secs) est très à droite, ainsi elle est très calorique et grasse .
 De plus le plat 303 (Café épicé à l'eau de vie) et en bas donc ce plat est alcoolisé et peu apprécié (il a un rating de 0).
@@ -94,7 +94,7 @@ res$var$contrib
 ```
 
 
-En regardant la table des contributions, on remarque que le sodium contribue peux au dimensions 1 à 3, sinon toutes les variables
+En regardant la table des contributions, on remarque que le sodium contribue peu aux dimensions 1 à 3, sinon toutes les variables
 ont un poids important dans le calcule des 4 premiers axes.
 
 Analyse factorielles des correspondances (AFC) :
@@ -147,8 +147,8 @@ res
 ```
 
 
-La LDA a trouvé 8 classes différentes pour nos plats donc les valeurs moyennes pour les autres variables (calories, fat, ...) nous ont été affiché. Ainsi un plat dans la 1ème classe, c'est à dire dans la classe des plats les moins bien notés, possède en moyenne
-11 de protéine. On remarque aussi que ces recettes sont les moins caloriques et les moins grasse, ce qui est tout le contraire pour un plat de la 8ème classe.
+La LDA a trouvé 8 classes différentes pour nos plats donc les valeurs moyennes pour les autres variables (calories, fat, ...) nous ont été affiché. Ainsi un plat dans la 1ère classe, c'est à dire dans la classe des plats les moins bien notés, possède en moyenne
+11 de protéine. On remarque aussi que ces recettes sont les moins caloriques et les moins grasses, ce qui est tout le contraire pour un plat de la 8ème classe.
 
 
 Nous pouvons maintenant prédire avec la LDA le rating d'un plat inventé de pur pièce.
@@ -163,9 +163,9 @@ pred.afd
 ```
 
 
-On remarque ainsi que notre plats appartient à la 7ème classe avec une probabilité à postériori de 48.1% .
+On remarque ainsi que notre plat appartient à la 7ème classe avec une probabilité à postériori de 48.1% .
 
-Nous pouvons aussi faire de la classification non supervisé avec des méthodes comme CAH et Kmeans.
+Nous pouvons aussi faire de la classification non supervisée avec des méthodes comme CAH et Kmeans.
 
 Commencons pas la classification ascendante hiérarchique (CAH).
 
@@ -180,7 +180,7 @@ plot(cah.ward, hang=-1)
 ```
 
 
-Le dendrogramme nous permet visuellement de choisir le nombre de classes pour notre classification en élageant notre arbre.
+Le dendrogramme nous permet visuellement de choisir le nombre de classes pour notre classification en élagant notre arbre.
 Ici nous choississons K = 5 classes. 
 
 
@@ -212,7 +212,7 @@ round(Means_groupes)
 ```
 
 Cette table montre les caractéristiques moyennes des plats de chacunes des 5 classes.
-On remarque tout comme la classification LDA précédente, que les plats avec le rating le plus faibles (classe 3) sont bien les plats peut gras, peu caloriques et avec peu de sodium et souvent alcoolisé. Au contraire la classe avec le rating le plus haut possède des plats gras, caloriques et salée.
+On remarque tout comme la classification LDA précédente, que les plats avec le rating le plus faibles (classe 3) sont bien les plats peu gras, peu caloriques et avec peu de sodium et souvent alcoolisés. Au contraire la classe avec le rating le plus haut possède des plats gras, caloriques et salés.
 
 
 Nous pouvons continuer aussi avec la méthodes des Kmeans, pour cela nous devons fixer à l'avance le nombre de classes. Pour cela nous allons nous aider de l'analyse de la CAH ou nous avions pris 5 classes, nous allons donc faire de même pour la méthode des Kmeans.
@@ -247,7 +247,7 @@ kmeans.result$size
 Nous retrouvons environ les même effectifs que la méthode LDA.
 
 Nous pouvons maitenant visualiser les dépendances des variables en mettant en couleur les classe trouvées.
-Cependant avec 5 classes l'analyse devient compliqué.
+Cependant avec 5 classes l'analyse devient compliquée.
 
 ```{r}
 pairs(data.cr, col=kmeans.result$cluster)
@@ -268,7 +268,7 @@ plot(1:10,inertie.intra,type="b",xlab="Nb. de groupes",ylab="% inertie intra")
 ```
 
 
-Nous choississons de sorte que prendre un K plus grand ne diminue plus assez l'inertie. Nous pouvons voir ici que K = 5 est un bon choix car à partir de K = 5, l'ajout de classe de diminue plus l'inertie de manière significative.
+Nous choisissons de sorte que prendre un K plus grand ne diminue plus assez l'inertie. Nous pouvons voir ici que K = 5 est un bon choix car à partir de K = 5, l'ajout de classe de diminue plus l'inertie de manière significative.
 
 
 Nous pouvons maintenant interprété avec l'ACP
@@ -283,13 +283,13 @@ head(data.Avecclasse)
 res=PCA(data.Avecclasse,scale.unit=TRUE, quali.sup = 8, graph=FALSE)
 plot(res, choix="ind", habillage=8, cex=0.7)
 ```
-Nous pouvons bien observer ici les 2 classes (verte et rose) avec 4 et 2 plats qui sont bien éloignés de tout le reste de la base de données. De plus on remarque bien la disposition des 3 autres classes autour de l'origine, cela correspond bien aux observations précédentes, la classification à l'air de d'avoir bien fonctionner.
+Nous pouvons bien observer ici les 2 classes (verte et rose) avec 4 et 2 plats qui sont bien éloignés de tout le reste de la base de données. De plus on remarque bien la disposition des 3 autres classes autour de l'origine, cela correspond bien aux observations précédentes, la classification à l'air de d'avoir bien fonctionné.
 
 
 
 <b> Partie 3 : Modèles de Prédiction <b>
 
-On réouvre toute les données pour cette partie car il y a quelques convertions a faire.
+On réouvre toute les données pour cette partie car il y a quelques convertions à faire.
 
 ```{r}
 library(tidyr)
@@ -307,10 +307,10 @@ head(data)
 ```
 
 
-Le but de cette partie est de prédire la variable rating de notre jeu de données a partir des 6 autres variables.
-Pour cela nous allons entrainé puis tester différents modèles pour voir lequels est le plus adapté.
+Le but de cette partie est de prédire la variable rating de notre jeu de données à partir des 6 autres variables.
+Pour cela nous allons entrainer puis tester différents modèles pour voir lequel est le plus adapté.
 
-Pour cela commençons par couper notre jeu de données en 2, un pour l'apprentissage des modèles et un autre pour leurs évaluation.
+Pour cela commençons par couper notre jeu de données en 2, un pour l'apprentissage des modèles et un autre pour leurs évaluations.
 
 ```{r}
 seed = 1 
@@ -327,7 +327,7 @@ head(data.test)
 ```
 
 
-Commencons par les modèles LDA et QDA.
+Commençons par les modèles LDA et QDA.
 
 ```{r}
 library(pROC)
@@ -382,7 +382,7 @@ ROC_qda$auc
 ```
 
 Nous avons effectué la LDA de deux manières différentes mais comme le montre leurs graphiques leurs résultats sont équivalents.
-On cherche a avoir l'aire en dessous de la courbe ROC le plus proche de 1 possible, pour l'instant ca n'est pas trop le cas, nous allons voir si d'autre modèle font mieu.
+On cherche à avoir l'aire en dessous de la courbe ROC le plus proche de 1 possible, pour l'instant ca n'est pas trop le cas, nous allons voir si d'autres modèles font mieux.
 
 Mise en place du modèle CART
 
@@ -432,7 +432,7 @@ ROC_RF <- roc(data.test$rating, pred_RF)
 ROC_RF$auc
 ```
 
-Nous pouvons remarqué dans la courbe des erreurs d'apprentisages (courbe en noir) du modèle qui est bien décroissante et se stabilise vers 150 arbres. Cependant les autres courbes sont les erreurs de classification pour chaques classe, seule la classe rose a une erreur décroissante, le modèle n'a pas l'air stable. De plus on à une aire ROC de 0.58 ce qui est un peu mieu que les modèle précédents.
+Nous pouvons remarquer dans la courbe des erreurs d'apprentisage (courbe en noir) du modèle qui est bien décroissante et se stabilise vers 150 arbres. Cependant les autres courbes sont les erreurs de classification pour chaques classe, seule la classe rose a une erreur décroissante, le modèle n'a pas l'air stable. De plus on à une aire ROC de 0.58 ce qui est un peu mieux que les modèles précédents.
 
 
 Passons au modèle de régression logistique
@@ -477,7 +477,7 @@ ROC_logit_lasso$auc
 ```
 
 Les graphiques des coefficients en fonction de log(lambda) correspond à un chemin de régularisation du Lasso.
-Le chemin cherche a augmenter lamba pour réduire le nombre de coefficients non nuls. A la fin, les coefficients non nuls sont les variables significatives.
+Le chemin cherche à augmenter lamba pour réduire le nombre de coefficients non nuls. A la fin, les coefficients non nuls sont les variables significatives.
 
 On choisit lambda par cross-validation, c'est à dire la valeur de lambda qui minimise l'erreur de classification.
 
