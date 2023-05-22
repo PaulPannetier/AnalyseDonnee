@@ -1,5 +1,6 @@
 ---
 title: "Projet Analyse de données"
+output: word_document
 ---
 
 Marilyne Mafo\n
