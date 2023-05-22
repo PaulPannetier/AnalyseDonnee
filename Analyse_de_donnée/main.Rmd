@@ -138,7 +138,6 @@ ROC_qda$auc
 Mise en place du modèle CART
 
 ```{r}
-# CART ------------------------------------------------------------------------------
 library(rpart)
 library(rpart.plot)
 arbre = rpart(rating~.,data.train)

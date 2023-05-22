@@ -1,0 +1,552 @@
+---
+title: "Projet Analyse de données"
+---
+
+Marilyne Mafo\n
+Léonard Pannetier\n
+MAIN4\n
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Nous allons présenter ici notre projet d'analyse de données sur une base de données rassemblant de nonbreuses caractéristiques sur 20052 plats de cuisines du monde entier. Cette base publique est disponible sur Kaggle avec ce lien https://www.kaggle.com/code/upsylend/pr-diction-sur-des-recettes-de-cuisine/input.
+
+La base possède notamment une variable rating (entre 0.0 et 5.0) représentant si un plat est apprécié/goutu, le but ce cette analyse est de prédire la valeur de la variable rating en fonction des autres variables ainsi que faire de la classification des plats afin d'en regrouper certains.
+
+La base de données ayant beaucoup de variables, nous avons décidé de ne garder que les principales, de plus énormément de variables n'ont que 2 modalitées (comme la variable disant si oui ou non il y a du bacon dans le plat) qui vaut 1 que très rarement.
+
+Nous ne garderons que les variables :
+- rating (appréciation du plat)
+- calories (énergie apporté par le plat)
+- protein (quantité de protéines)
+- fat (quantité de graisses)
+- sodium (quantité de sel)
+- alcoholic (0 ou 1, présence d'alcool)
+- bake (0 ou 1, plat rotie)
+
+En supprimant les lignes avec au moins une valeur manquante sur ces variable nous n'avons plus que 15864 plats disponibles pour notre études.
+
+
+
+```{r}
+library(tidyr)
+rm(list=ls())
+data = read.csv("epi_r.csv", sep =",")
+data = data[c(2,3,4,5,6,15,39)]
+data = data[data$calories != "",]
+data = data[data$protein != "",]
+data = data[data$fat != "",]
+data = data[data$sodium != "",]
+data = drop_na(data)
+head(data)
+```
+
+
+
+<b> Partie 1 : Statistiques descriptives <b>
+
+
+```{r}
+boxplot(data)
+```
+
+
+On observe des grandes différences entre toutes nos variable, il faudra en prendre compte lors de l'analyse.
+
+```{r}
+pairs(data)
+```
+
+
+Ce diagramme permet de faire une analyse bivariée des données, si des données sont corrélées, on va observer une relation linéaires entre les deux variables.
+
+Ainsi les variables calories et fat ont l'air d'être corrélées, ainsi que les variables calories et sodium.
+Nous allons vérifier cela en faisant une analyse des composantes principales (ACP).
+
+```{r}
+tmpData = data[c(1:250),]
+library(FactoMineR)
+res <- PCA(tmpData)
+res
+```
+
+
+Ici on peut interpréter le graphe des variables en disant que l'axe 1 est fortement corrélé à fat, protein et calories. Cet axe représente alors à droite les recettes les plus caloriques, salées et protéinées (c'est à dire les plats assez lourds) et à gauche celles qui ne le sont pas(les plats légers). 
+L'axe 2 quant à lui est corrélé positivement avec les variable bake et rating et négativement avec alcoholic. On peut dire alors que cet axe distingue les recettes les mieux notées en haut (c'est à dire les plats appréciés) contre celles mal notées et alcolisées vers le bas.
+
+Sur le graphe des individus on peut dire que la recette 283 (Ribs première braisées avec pois chiches et raisins secs) est très à droite, ainsi elle est très calorique et grasse .
+De plus le plat 303 (Café épicé à l'eau de vie) et en bas donc ce plat est alcoolisé et peu apprécié (il a un rating de 0).
+
+
+```{r}
+barplot(res$eig[,2])
+summary(res)
+```
+
+
+Observons le pourcentage d'inertie expliqué par les différents axes trouvés par l'ACP.
+Ainsi en voulant conservé 80% de l'inertie il faut conserver 4 axes.
+
+```{r}
+res$var$contrib
+```
+
+
+En regardant la table des contributions, on remarque que le sodium contribue peux au dimensions 1 à 3, sinon toutes les variables
+ont un poids important dans le calcule des 4 premiers axes.
+
+Analyse factorielles des correspondances (AFC) :
+
+Nous commencons par vérifier avec un test du Ki-deux que nos variables sont bien liées..
+
+```{r}
+chisq.test(data[c(1:5000),])
+```
+
+
+Nous remarquons que la p-value est inférieur à 5% ainsi nos variable sont bien liées, nous allons pousuivre avec l'analyse factorielles des correspondances.
+
+
+
+```{r}
+data2 = data[c(1:50),]
+res <- CA(data2)
+```
+
+
+```{r}
+res$col$contrib
+```
+
+```{r}
+plot(res, selectRow="cos2 0.6",selectCol="cos2 0.6", cex=0.6)
+```
+
+
+Nous avons tracé ici les points les mieux représentés.
+Les points bleus (donc les plats) proche d'un triangle rouge contient beaucoup de ce composant, ainsi les points autour du triangle fat sont les plats les plus gras.
+De plus la table des contributions nous indique quelles variables contribuent aux axes trouvés par l'AFC.
+
+```{r}
+barplot(res$eig[,2])
+```
+
+
+Nous remarquons aussi que la dimension 1 d'écrit 88% de l'inertie. Cette même dimension étant en majorité reliée aux variables calories et sodium.
+
+<b> Parties 2 : Méthodes de classifications <b>
+
+Nous allons premièrement utiliser la méthode de classification supervisée de l'analyse discriminante linéaire (LDA) pour expliquer l'appartenance d'un plat à une certaine classe de rating en fonction de ses caractéristiques.
+
+```{r}
+library(MASS)
+res = lda(rating ~., data=data)
+res
+```
+
+
+La LDA a trouvé 8 classes différentes pour nos plats donc les valeurs moyennes pour les autres variables (calories, fat, ...) nous ont été affiché. Ainsi un plat dans la 1ème classe, c'est à dire dans la classe des plats les moins bien notés, possède en moyenne
+11 de protéine. On remarque aussi que ces recettes sont les moins caloriques et les moins grasse, ce qui est tout le contraire pour un plat de la 8ème classe.
+
+
+Nous pouvons maintenant prédire avec la LDA le rating d'un plat inventé de pur pièce.
+
+```{r}
+#prediction
+newdata= data.frame(calories=175,protein=125,fat=51,sodium=140,alcoholic=0,bake=1)
+
+K=nlevels(data$rating)
+pred.afd = predict(res, newdata) #par défaut, classe un individi selon la règle du MAP.
+pred.afd
+```
+
+
+On remarque ainsi que notre plats appartient à la 7ème classe avec une probabilité à postériori de 48.1% .
+
+Nous pouvons aussi faire de la classification non supervisé avec des méthodes comme CAH et Kmeans.
+
+Commencons pas la classification ascendante hiérarchique (CAH).
+
+
+```{r}
+data.cr <- scale(data,center=TRUE, scale=TRUE)
+d.data.cr <- dist(data.cr)
+#On utilise la mesure de Ward :
+cah.ward <- hclust(d.data.cr, method="ward.D2")
+#On affichage le dendrogramme :
+plot(cah.ward, hang=-1)
+```
+
+
+Le dendrogramme nous permet visuellement de choisir le nombre de classes pour notre classification en élageant notre arbre.
+Ici nous choississons K = 5 classes. 
+
+
+```{r}
+plot(cah.ward, hang =-1,main="ward.D2")
+K=5
+rect.hclust(cah.ward,K)
+```
+
+
+Nous voyons bien que un élagage en 5 classes permet d'avoir des groupes les plus homogènes et réparties possibles pour notre jeu de données.
+
+
+```{r}
+groupes.cah <- cutree(cah.ward, K)
+table(groupes.cah)
+```
+
+
+Cepandant il n'y a que 4 et 2 plats dans les groupes 4 et 5.
+
+
+```{r}
+Means_groupes <- matrix(NA, nrow=K, ncol=dim(data)[2])
+colnames(Means_groupes)=colnames(data)
+rownames(Means_groupes) =1:K
+for (i in 1:K) Means_groupes[i,]<- colMeans(data[groupes.cah==i,])
+round(Means_groupes)
+```
+
+Cette table montre les caractéristiques moyennes des plats de chacunes des 5 classes.
+On remarque tout comme la classification LDA précédente, que les plats avec le rating le plus faibles (classe 3) sont bien les plats peut gras, peu caloriques et avec peu de sodium et souvent alcoolisé. Au contraire la classe avec le rating le plus haut possède des plats gras, caloriques et salée.
+
+
+Nous pouvons continuer aussi avec la méthodes des Kmeans, pour cela nous devons fixer à l'avance le nombre de classes. Pour cela nous allons nous aider de l'analyse de la CAH ou nous avions pris 5 classes, nous allons donc faire de même pour la méthode des Kmeans.
+
+```{r}
+K=5
+kmeans.result <- kmeans(data.cr,centers=K)
+kmeans.result$size
+```
+
+
+Nous remarquons que la répartition n'est pas du tout la même que celle avec la méthode CAH, celle-ci est beaucoup plus équilibré.
+Cepandant si on relance une méthode des Kmeans.
+
+
+```{r}
+kmeans.result <- kmeans(data.cr,centers=K)
+kmeans.result$size
+```
+
+
+On voit que le résultat a changé comparé au précédement, car c'est dépendant de l'initialisation.
+Il faut donc faire une bonne initialisation avec une CAH ou une stabilisation en lançant plusieurs fois Kmeans.
+Ici nous allons lancé 1000 méthodes des Kmeans pour que les classes soit stabilisées.
+
+```{r}
+kmeans.result <- kmeans(data.cr,centers=K,nstart=1000)
+kmeans.result$size
+```
+
+
+Nous retrouvons environ les même effectifs que la méthode LDA.
+
+Nous pouvons maitenant visualiser les dépendances des variables en mettant en couleur les classe trouvées.
+Cependant avec 5 classes l'analyse devient compliqué.
+
+```{r}
+pairs(data.cr, col=kmeans.result$cluster)
+```
+
+
+Nous avons également une autre façon plus graphique pour choisir le nombre de classes K. 
+
+```{r}
+inertie.intra <- rep(0,times=10)
+for (k in 1:10)
+{
+  kmeans.result <- kmeans(data.cr,centers=k,nstart=100)
+  inertie.intra[k] <- kmeans.result$tot.withinss/kmeans.result$totss
+}
+# graphique
+plot(1:10,inertie.intra,type="b",xlab="Nb. de groupes",ylab="% inertie intra")
+```
+
+
+Nous choississons de sorte que prendre un K plus grand ne diminue plus assez l'inertie. Nous pouvons voir ici que K = 5 est un bon choix car à partir de K = 5, l'ajout de classe de diminue plus l'inertie de manière significative.
+
+
+Nous pouvons maintenant interprété avec l'ACP
+
+```{r}
+K=5
+kmeans.result <- kmeans(data.cr,centers=K,nstart=1000)
+
+data.Avecclasse = cbind.data.frame(data, classe = factor(kmeans.result$cluster))
+head(data.Avecclasse)
+
+res=PCA(data.Avecclasse,scale.unit=TRUE, quali.sup = 8, graph=FALSE)
+plot(res, choix="ind", habillage=8, cex=0.7)
+```
+Nous pouvons bien observer ici les 2 classes (verte et rose) avec 4 et 2 plats qui sont bien éloignés de tout le reste de la base de données. De plus on remarque bien la disposition des 3 autres classes autour de l'origine, cela correspond bien aux observations précédentes, la classification à l'air de d'avoir bien fonctionner.
+
+
+
+<b> Partie 3 : Modèles de Prédiction <b>
+
+On réouvre toute les données pour cette partie car il y a quelques convertions a faire.
+
+```{r}
+library(tidyr)
+rm(list=ls())
+data = read.csv("epi_r.csv", sep =",")
+data = data[c(2,3,4,5,6,15,39)]
+data = data[data$calories != "",]
+data = data[data$protein != "",]
+data = data[data$fat != "",]
+data = data[data$sodium != "",]
+data = drop_na(data)
+#on convertie rating en variable qualitative à 5 modalités (entre 0 et 1).
+data$rating = as.factor(((data$rating > 1) + (data$rating > 2) + (data$rating > 3) + (data$rating > 4)) / 4)
+head(data)
+```
+
+
+Le but de cette partie est de prédire la variable rating de notre jeu de données a partir des 6 autres variables.
+Pour cela nous allons entrainé puis tester différents modèles pour voir lequels est le plus adapté.
+
+Pour cela commençons par couper notre jeu de données en 2, un pour l'apprentissage des modèles et un autre pour leurs évaluation.
+
+```{r}
+seed = 1 
+set.seed(seed)
+n = nrow(data)
+p = ncol(data)-1
+test.ratio = 0.2 # ratio of test/train samples
+n.test = round(n*test.ratio)
+tr = sample(1:n,n.test)
+data.test = data[tr,]
+data.train = data[-tr,]
+head(data.train)
+head(data.test)
+```
+
+
+Commencons par les modèles LDA et QDA.
+
+```{r}
+library(pROC)
+res_lda = lda(rating~., data.train)
+pred_lda <- predict(res_lda, data.test, type = "class")
+
+## Table confusion et accuracy :
+table(data.test$rating, pred_lda$class)
+accuracy_lda = mean(data.test$rating == pred_lda$class)
+accuracy_lda
+
+ROC_lda <- roc(data.test$rating,as.numeric(pred_lda$class))
+plot(ROC_lda, print.auc=TRUE,  print.auc.y = 0.5)
+ROC_lda$auc
+
+#lda version stepwise
+
+library(klaR)
+stepwise_lda= stepclass(rating~., data=data.train, method="lda", direction="backward")
+stepwise_lda
+res_stepwise_lda = lda(stepwise_lda$formula, data=data.train)
+
+pred_stepwise_lda <- predict(res_lda, data.test, type = "class")
+
+## Table confusion et accuracy :
+table(data.test$rating, pred_stepwise_lda$class)
+accuracy_stepwise_lda = mean(data.test$rating == pred_stepwise_lda$class)
+accuracy_stepwise_lda
+
+ROC_stepwise_lda <- roc(data.test$rating,as.numeric(pred_stepwise_lda$class))
+plot(ROC_stepwise_lda, print.auc=TRUE,  print.auc.y = 0.5)
+ROC_stepwise_lda$auc
+
+accuracy_lda = max(accuracy_lda, accuracy_stepwise_lda)
+
+#QDA
+
+res_qda=qda(rating~., data.train)
+
+#prediction:
+pred_qda = predict(res_qda, data.test, type = "class")
+
+## Table confusion et accuracy :
+table(data.test$rating, pred_qda$class)
+accuracy_qda = mean(data.test$rating == pred_qda$class)
+accuracy_qda
+
+ROC_qda <- roc(data.test$rating, as.numeric(pred_qda$class))
+plot(ROC_qda, print.auc=TRUE,  print.auc.y = 0.5)
+ROC_qda$auc
+
+```
+
+Nous avons effectué la LDA de deux manières différentes mais comme le montre leurs graphiques leurs résultats sont équivalents.
+On cherche a avoir l'aire en dessous de la courbe ROC le plus proche de 1 possible, pour l'instant ca n'est pas trop le cas, nous allons voir si d'autre modèle font mieu.
+
+Mise en place du modèle CART
+
+```{r}
+library(rpart)
+library(rpart.plot)
+arbre = rpart(rating~.,data.train)
+cp.opt <- arbre$cptable[which.min(arbre$cptable[, "xerror"]), "CP"]
+arbre.opt <- prune(arbre,cp=cp.opt)
+
+## prédiction :
+pred_arbre = predict(arbre.opt, data.test, type = "class")
+## Table confusion et accuracy :
+table(data.test$rating, pred_arbre)
+accuracy_cart = mean(data.test$rating == pred_arbre)
+accuracy_cart
+
+## aire sous courbe ROC
+pred_cart = predict(arbre.opt, data.test, type="prob")[,2] 
+ROC_cart <- roc(data.test$rating, pred_cart)
+ROC_cart$auc
+```
+
+On a une aire ROC de 0.5 se qui est très proche des résultats des méthodes LDA et QDA.
+
+
+Essayons à présent le modèle random forest.
+
+```{r}
+library(randomForest)
+fit_RF <- randomForest(rating~.,data.train)
+fit_RF
+plot(fit_RF)
+
+
+## prédiction :
+pred_rf = predict(fit_RF, data.test, type="class")
+
+## Table confusion et accuracy :
+table(data.test$rating, pred_rf)
+accuracy_RF = mean(data.test$rating == pred_rf)
+accuracy_RF
+
+## aire sous courbe ROC
+pred_RF = predict(fit_RF, data.test, type="prob")[,2]
+ROC_RF <- roc(data.test$rating, pred_RF)
+ROC_RF$auc
+```
+
+Nous pouvons remarqué dans la courbe des erreurs d'apprentisages (courbe en noir) du modèle qui est bien décroissante et se stabilise vers 150 arbres. Cependant les autres courbes sont les erreurs de classification pour chaques classe, seule la classe rose a une erreur décroissante, le modèle n'a pas l'air stable. De plus on à une aire ROC de 0.58 ce qui est un peu mieu que les modèle précédents.
+
+
+Passons au modèle de régression logistique
+
+```{r}
+### Modèle
+logit.train <- glm(rating ~ ., family = binomial , data=data.train)
+
+# régression logistique Lasso
+library(glmnet)
+res_Lasso <- glmnet(as.matrix(data.train[,-1]),data.train$rating, family='multinomial') 
+plot(res_Lasso, label = TRUE)  # en abscisse : norme des coefficients
+plot(res_Lasso, xvar = "lambda", label = TRUE) # en abscisse : log(lambda)
+#sum(coef(res_Lasso, s=exp(-7))!=0)
+
+
+cvLasso <- cv.glmnet(as.matrix(data.train[,-1]),data.train$rating,family="multinomial", type.measure = "class") 
+plot(cvLasso)
+cvLasso$lambda.min
+coef(res_Lasso, s=cvLasso$lambda.min)
+
+#prédiction
+class_logit_lasso=predict(cvLasso, newx = as.matrix(data.test[,-1]), s = 'lambda.min', type = "class")
+
+#Table de confusion et accuracy
+accuracy_logit_lasso = mean(data.test$rating == class_logit_lasso)
+#accuracy_logit_lasso
+
+#courbe ROC
+pred_logit_lasso_tmp = predict(cvLasso, newx = as.matrix(data.test[,-1]), s = 'lambda.min', type = "response")
+
+pred_logit_lasso = 1:n.test
+for(i in 1:n.test)
+{
+  pred_logit_lasso[i] = pred_logit_lasso_tmp[i,2,] * 0.25 + pred_logit_lasso_tmp[i,3,] * 0.5 + pred_logit_lasso_tmp[i,4,] * 0.75 + pred_logit_lasso_tmp[i,5,] * 1
+}
+
+#pred_logit_lasso
+ROC_logit_lasso = roc(data.test$rating, pred_logit_lasso)
+ROC_logit_lasso$auc
+
+```
+
+Les graphiques des coefficients en fonction de log(lambda) correspond à un chemin de régularisation du Lasso.
+Le chemin cherche a augmenter lamba pour réduire le nombre de coefficients non nuls. A la fin, les coefficients non nuls sont les variables significatives.
+
+On choisit lambda par cross-validation, c'est à dire la valeur de lambda qui minimise l'erreur de classification.
+
+
+Nous rassemblons tout ces graphiques pour les comparer.
+
+```{r}
+result=matrix(NA, ncol=5, nrow=2)
+rownames(result)=c('accuracy', 'AUC')
+colnames(result)=c('lda', 'qda', 'cart', 'RF', 'logit_lasso')
+result[1,]= c(accuracy_lda, accuracy_qda, accuracy_cart, accuracy_RF, accuracy_logit_lasso)
+result[2,]=c(ROC_lda$auc, ROC_qda$auc, ROC_cart$auc, ROC_RF$auc, ROC_logit_lasso$auc)
+result
+apply(result,1, which.max )
+
+plot(ROC_lda, xlim=c(1,0))
+plot(ROC_qda, add=TRUE, col=2)
+plot(ROC_cart, add=TRUE, col=3)
+plot(ROC_RF, add=TRUE, col=4)
+plot(ROC_logit_lasso, add=TRUE, col=5)
+legend('bottom', col=1:5, paste(c('lda', 'qda', 'cart', 'RF', 'logit_lasso')), lwd=1)
+```
+
+
+Nous remarquons donc que la méthode avec la meilleure précision est le modèle Random forest mais nous avons vu qu'il était instable. Au niveau de l'aire sous la courbe ROC la régression logistique semble plus performante, c'est le modèle que nous choisirons pour prédire le rating d'un plat, bien que de nombreuse amélioration semble faisable, notamment en mettant des therme de pénalité supplémentaire sur les modèle faisant une mauvaise prédiction sur une classe avec moins d'éléments.
+De plus mieux structurer le jeu de données aurait également permis d'avoir de meilleures prédictions.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
