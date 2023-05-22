@@ -482,7 +482,7 @@ Le chemin cherche a augmenter lamba pour réduire le nombre de coefficients non 
 On choisit lambda par cross-validation, c'est à dire la valeur de lambda qui minimise l'erreur de classification.
 
 
-Nous rassemblons tout ces graphiques pour les comparer.
+Nous rassemblons tous ces graphiques pour les comparer.
 
 ```{r}
 result=matrix(NA, ncol=5, nrow=2)
@@ -502,8 +502,8 @@ legend('bottom', col=1:5, paste(c('lda', 'qda', 'cart', 'RF', 'logit_lasso')), l
 ```
 
 
-Nous remarquons donc que la méthode avec la meilleure précision est le modèle Random forest mais nous avons vu qu'il était instable. Au niveau de l'aire sous la courbe ROC la régression logistique semble plus performante, c'est le modèle que nous choisirons pour prédire le rating d'un plat, bien que de nombreuse amélioration semble faisable, notamment en mettant des therme de pénalité supplémentaire sur les modèle faisant une mauvaise prédiction sur une classe avec moins d'éléments.
-De plus mieux structurer le jeu de données aurait également permis d'avoir de meilleures prédictions.
+Nous remarquons donc que la méthode avec la meilleure précision est le modèle Random forest mais nous avons vu qu'il était instable. Au niveau de l'aire sous la courbe ROC la régression logistique semble plus performante, c'est le modèle que nous choisirons pour prédire le rating d'un plat, bien que de nombreuses améliorations semblent faisable, notamment en mettant des termes de pénalité supplémentaire sur les modèles faisant une mauvaise prédiction sur une classe avec moins d'éléments.
+De plus , mieux structurer le jeu de données aurait également permi d'avoir de meilleures prédictions.
 
 
 
